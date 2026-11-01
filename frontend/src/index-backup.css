@@ -1,0 +1,53 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #218b81;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #c9e9e3;
+  color: #123e3a;
+}
+
+
+/* UrbanSync global improvements */
+
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #218b81;
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+img {
+  max-width: 100%;
+}
