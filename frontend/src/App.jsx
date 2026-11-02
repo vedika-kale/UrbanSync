@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useState,useEffect } from "react";
+import { getSocieties, addSociety } from "./services/api";
 import {
   ResponsiveContainer,
   BarChart,
@@ -31,7 +32,7 @@ const modules = [
       { id: "F003", name: "Flat B-201", category: "3 BHK", person: "Ananya Patil", status: "Occupied" },
     ],
     columns: ["id", "name", "category", "person", "status"],
-    addLabel: "Add Flat",
+    addLabel: "Add Society",
   },
   {
     name: "Residents",
@@ -461,7 +462,7 @@ function RoleDashboard({ role, onSwitchRole }) {
 }
 
 
-function App() {
+function App(){
   const [selectedRole, setSelectedRole] = useState(null);
   const [activePage, setActivePage] = useState("Dashboard");
   const [records, setRecords] = useState(() => ({
@@ -472,9 +473,36 @@ function App() {
   const [message, setMessage] = useState("");
   const [complaintText, setComplaintText] = useState("");
   const [analysisResult, setAnalysisResult] = useState(null);
+  // Society data from backend
+const [societies, setSocieties] = useState([]);
+const [societyLoading, setSocietyLoading] = useState(true);
+const [societyError, setSocietyError] = useState("");
+
+// Load societies from Spring Boot backend
+useEffect(() => {
+    const loadSocieties = async () => {
+        try {
+            const data = await getSocieties();
+            setSocieties(data);
+            setSocietyError("");
+        } catch (error) {
+            console.error("Society loading error:", error);
+            setSocietyError("Unable to load societies from backend.");
+        } finally {
+            setSocietyLoading(false);
+        }
+    };
+
+    loadSocieties();
+}, []);
 
   const selectedModule = modules.find((module) => module.name === activePage);
-  const rows = records[activePage] || [];
+
+// Use actual backend data for Society Management
+const rows =
+    activePage === "Society Management"
+        ? societies
+        : records[activePage] || [];
   const filteredRows = rows.filter((record) =>
     Object.values(record).some((value) =>
       String(value).toLowerCase().includes(search.toLowerCase())
@@ -499,33 +527,83 @@ function App() {
     setAnalysisResult(null);
   }
 
-  function addRecord() {
-    if (!selectedModule?.addLabel) return;
+  
+async function addRecord() {
+  if (!selectedModule?.addLabel) return;
 
-    const name = window.prompt("Enter a name or description:");
-    if (!name?.trim()) return;
+  // Add Society directly to MySQL through the backend
+  if (activePage === "Society Management") {
+    const societyName = window.prompt("Enter society name:");
+    if (!societyName?.trim()) return;
 
-    const category = window.prompt("Enter the category:");
-    if (!category?.trim()) return;
+    const address = window.prompt("Enter society address:");
+    if (!address?.trim()) return;
 
-    const person = window.prompt("Enter flat number, person, date or details:");
-    if (!person?.trim()) return;
+    const city = window.prompt("Enter city:");
+    if (!city?.trim()) return;
 
-    const prefix = activePage.split(" ").map((word) => word[0]).join("").toUpperCase();
-    const newRecord = {
-      id: `${prefix}${Date.now().toString().slice(-5)}`,
-      name: name.trim(),
-      category: category.trim(),
-      person: person.trim(),
-      status: activePage === "Finance and Payments" ? "Pending" : "New",
+    const state = window.prompt("Enter state:");
+    if (!state?.trim()) return;
+
+    const pincode = window.prompt("Enter pincode:");
+    if (!pincode?.trim()) return;
+
+    const contactNumber = window.prompt("Enter contact number:");
+    if (!contactNumber?.trim()) return;
+
+    const email = window.prompt("Enter society email:");
+    if (!email?.trim()) return;
+
+    const societyData = {
+      societyName: societyName.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      pincode: pincode.trim(),
+      contactNumber: contactNumber.trim(),
+      email: email.trim()
     };
 
-    setRecords((previous) => ({
-      ...previous,
-      [activePage]: [newRecord, ...previous[activePage]],
-    }));
-    setMessage("Record added to this demo. It will not persist after refresh.");
+    try {
+      const savedSociety = await addSociety(societyData);
+      setSocieties((previous) => [...previous, savedSociety]);
+      setMessage("Society added successfully to the database!");
+    } catch (error) {
+      console.error("Society saving error:", error);
+      setMessage("Unable to save society. Please check the backend.");
+    }
+
+    return;
   }
+
+  // Existing demo functionality for other modules
+  const name = window.prompt("Enter a name or description:");
+  if (!name?.trim()) return;
+
+  const category = window.prompt("Enter the category:");
+  if (!category?.trim()) return;
+
+  const person = window.prompt("Enter flat number, person, date or details:");
+  if (!person?.trim()) return;
+
+  const prefix = activePage.split(" ").map((word) => word[0]).join("").toUpperCase();
+
+  const newRecord = {
+    id: `${prefix}${Date.now().toString().slice(-5)}`,
+    name: name.trim(),
+    category: category.trim(),
+    person: person.trim(),
+    status: activePage === "Finance and Payments" ? "Pending" : "New",
+  };
+
+  setRecords((previous) => ({
+    ...previous,
+    [activePage]: [newRecord, ...previous[activePage]],
+  }));
+
+  setMessage("Record added to this demo. It will not persist after refresh.");
+}
+
 
   function updateStatus(id, status) {
     setRecords((previous) => ({
@@ -777,38 +855,100 @@ function App() {
     );
   }
 
-  function renderModule() {
-    if (activePage === "Dashboard") return renderDashboard();
-    if (activePage === "AI and Reporting") return renderAI();
+  
+function renderModule() {
+  if (activePage === "Dashboard") return renderDashboard();
+  if (activePage === "AI and Reporting") return renderAI();
 
-    return (
-      <>
-        <section className="panel">
-          <div className="panel-header">
-            <div><h3>{activePage} Overview</h3><p>{selectedModule.description}</p></div>
-            {selectedModule.addLabel && <button className="primary-button" onClick={addRecord}>+ {selectedModule.addLabel}</button>}
+  return (
+    <>
+      {/* Module Overview */}
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <h3>{activePage} Overview</h3>
+            <p>{selectedModule.description}</p>
           </div>
-          <div className="feature-grid">
-            {selectedModule.features.map((feature) => <div className="feature-card" key={feature}><span>✓</span><strong>{feature}</strong><p>Included in the planned frontend module.</p></div>)}
-          </div>
-        </section>
 
-        <section className="panel">
-          <div className="panel-header">
-            <div><h3>{activePage} Records</h3><p>{filteredRows.length} record(s) shown · Sample data</p></div>
-            <input className="search-input" type="search" placeholder="Search records..." value={search} onChange={(event) => setSearch(event.target.value)} />
-          </div>
-          {renderTable(filteredRows, selectedModule.columns)}
-        </section>
+          {selectedModule.addLabel && (
+            <button className="primary-button" onClick={addRecord}>
+              + {selectedModule.addLabel}
+            </button>
+          )}
+        </div>
 
-        {activePage === "Property Management" && (
-          <section className="panel"><h3>Rental enquiry form</h3><p className="page-description">Prototype enquiry form. It does not send information to a server yet.</p>
-            <RentalEnquiry onSubmit={() => setMessage("Rental enquiry captured in this demonstration only.")} />
-          </section>
+        <div className="feature-grid">
+          {selectedModule.features.map((feature) => (
+            <div className="feature-card" key={feature}>
+              <span>✓</span>
+              <strong>{feature}</strong>
+              <p>Included in the planned frontend module.</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Module Records */}
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <h3>{activePage} Records</h3>
+            <p>
+              {activePage === "Society Management"
+                ? `${societies.length} society record(s) from database`
+                : `${filteredRows.length} record(s) shown · Sample data`}
+            </p>
+          </div>
+
+          <input
+            className="search-input"
+            type="search"
+            placeholder="Search records..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+
+        {activePage === "Society Management" && societyLoading ? (
+          <p>Loading societies from database...</p>
+        ) : activePage === "Society Management" && societyError ? (
+          <p className="empty-message">{societyError}</p>
+        ) : (
+          renderTable(
+            filteredRows,
+            activePage === "Society Management"
+              ? [
+                  "id",
+                  "societyName",
+                  "address",
+                  "city",
+                  "state",
+                  "pincode",
+                  "contactNumber",
+                  "email"
+                ]
+              : selectedModule.columns
+          )
         )}
-      </>
-    );
-  }
+      </section>
+
+      {activePage === "Property Management" && (
+        <section className="panel">
+          <h3>Rental enquiry form</h3>
+          <p className="page-description">
+            Prototype enquiry form. It does not send information to a server yet.
+          </p>
+          <RentalEnquiry
+            onSubmit={() =>
+              setMessage("Rental enquiry captured in this demonstration only.")
+            }
+          />
+        </section>
+      )}
+    </>
+  );
+}
+
   
     if (!selectedRole) {
   return <LoginScreen onLogin={setSelectedRole} />;
