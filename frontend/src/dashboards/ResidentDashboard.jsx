@@ -329,5 +329,6 @@ export default function ResidentDashboard() {
         Demo mode: information is stored in temporary page state and will reset
         when the page is refreshed. No backend is connected yet.
       </p>
-    </div>https://claude.ai/share/f19ecfe9-b1c5-45e4-a998-52d01621b384 
+    </div>
+  );
 }
